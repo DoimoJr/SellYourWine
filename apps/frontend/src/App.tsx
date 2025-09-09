@@ -1,5 +1,5 @@
 import { useState } from 'react'
-import { UserRole, Product } from '@sellyourwine/shared'
+import { UserRole, type Product } from '@sellyourwine/shared'
 import './App.css'
 
 function App() {
