@@ -1,0 +1,259 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+/**
+ * === ENUMS ===
+ */
+enum OrderStatus {
+  paid
+  label_generated
+  shipped
+  delivered
+  cancelled
+}
+
+enum OrderItemStatus {
+  pending
+  label_generated
+  shipped
+  delivered
+  refunded
+}
+
+/**
+ * === MODELS ===
+ */
+
+model User {
+  id        String   @id @default(uuid())
+  email     String   @unique
+  password  String?  // optional for backward compatibility
+  role      String   @default("buyer") // buyer | seller | admin
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  addresses           Address[]
+  seller              Seller?
+  orders              Order[] // as buyer
+  refreshTokens       RefreshToken[]
+  passwordResetTokens PasswordResetToken[]
+  cart                Cart?
+}
+
+model Address {
+  id                String   @id @default(uuid())
+  userId            String?
+  fullName          String
+  line1             String
+  line2             String?
+  city              String
+  region            String?
+  postalCode        String
+  country           String
+  phone             String?
+  isDefaultShipping Boolean  @default(false)
+  isDefaultBilling  Boolean  @default(false)
+  createdAt         DateTime @default(now())
+  updatedAt         DateTime @updatedAt
+
+  user           User?   @relation(fields: [userId], references: [id])
+  shippingOrders Order[] @relation("ShippingAddress")
+  billingOrders  Order[] @relation("BillingAddress")
+}
+
+model Seller {
+  id          String   @id @default(uuid())
+  userId      String   @unique
+  displayName String
+  iban        String?
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  user       User        @relation(fields: [userId], references: [id])
+  products   Product[]
+  orderItems OrderItem[]
+}
+
+model Category {
+  id        String   @id @default(uuid())
+  parentId  String?
+  name      String
+  slug      String   @unique
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  parent   Category?  @relation("CategoryParent", fields: [parentId], references: [id])
+  children Category[] @relation("CategoryParent")
+  products Product[]
+}
+
+model Product {
+  id          String   @id @default(uuid())
+  sellerId    String
+  categoryId  String?
+  name        String
+  vintage     Int?
+  grapes      String?
+  region      String?
+  alcoholPct  Decimal? @db.Decimal(5, 2)
+  description String?
+  priceCents  Int
+  currency    String   @default("EUR") @db.Char(3)
+  isActive    Boolean  @default(true)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  seller     Seller         @relation(fields: [sellerId], references: [id])
+  category   Category?      @relation(fields: [categoryId], references: [id])
+  images     ProductImage[]
+  inventory  Inventory?
+  orderItems OrderItem[]
+  cartItems  CartItem[]
+
+  @@index([sellerId])
+  @@index([categoryId])
+}
+
+model ProductImage {
+  id        String   @id @default(uuid())
+  productId String
+  url       String
+  position  Int      @default(0)
+  createdAt DateTime @default(now())
+
+  product Product @relation(fields: [productId], references: [id])
+}
+
+model Inventory {
+  id        String   @id @default(uuid())
+  productId String   @unique
+  sku       String?  @unique
+  quantity  Int      @default(0)
+  managed   Boolean  @default(true)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  product Product @relation(fields: [productId], references: [id])
+}
+
+model Order {
+  id                String      @id @default(uuid())
+  buyerId           String?
+  status            OrderStatus @default(paid)
+  subtotalCents     Int         @default(0)
+  shippingCents     Int         @default(0)
+  feeCents          Int         @default(0)
+  totalCents        Int         @default(0)
+  currency          String      @default("EUR") @db.Char(3)
+  paymentMethod     String?
+  stripeSessionId   String?     @unique
+  shippingAddressId String?
+  billingAddressId  String?
+  createdAt         DateTime    @default(now())
+  updatedAt         DateTime    @updatedAt
+
+  buyer           User?       @relation(fields: [buyerId], references: [id])
+  items           OrderItem[]
+  payment         Payment?
+  shippingAddress Address?    @relation("ShippingAddress", fields: [shippingAddressId], references: [id])
+  billingAddress  Address?    @relation("BillingAddress", fields: [billingAddressId], references: [id])
+
+  @@index([buyerId])
+  @@index([status])
+}
+
+model OrderItem {
+  id             String          @id @default(uuid())
+  orderId        String
+  productId      String
+  sellerId       String
+  qty            Int
+  unitPriceCents Int
+  status         OrderItemStatus @default(pending)
+  labelUrl       String?
+  trackingNumber String?
+  createdAt      DateTime        @default(now())
+  updatedAt      DateTime        @updatedAt
+
+  order   Order   @relation(fields: [orderId], references: [id])
+  product Product @relation(fields: [productId], references: [id])
+  seller  Seller  @relation(fields: [sellerId], references: [id])
+
+  @@index([orderId])
+  @@index([sellerId])
+}
+
+model Payment {
+  id                String   @id @default(uuid())
+  orderId           String   @unique
+  provider          String // 'stripe'
+  providerPaymentId String?
+  status            String // authorized | captured | refunded | failed
+  capturedCents     Int?
+  createdAt         DateTime @default(now())
+  updatedAt         DateTime @updatedAt
+
+  order Order @relation(fields: [orderId], references: [id])
+}
+
+model RefreshToken {
+  id        String   @id @default(uuid())
+  userId    String
+  token     String   @unique
+  expiresAt DateTime
+  createdAt DateTime @default(now())
+  isRevoked Boolean  @default(false)
+
+  user User @relation(fields: [userId], references: [id])
+
+  @@index([userId])
+  @@index([token])
+}
+
+model PasswordResetToken {
+  id        String   @id @default(uuid())
+  userId    String
+  token     String   @unique
+  expiresAt DateTime
+  createdAt DateTime @default(now())
+  isUsed    Boolean  @default(false)
+
+  user User @relation(fields: [userId], references: [id])
+
+  @@index([userId])
+  @@index([token])
+}
+
+model Cart {
+  id        String   @id @default(uuid())
+  userId    String   @unique
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  user  User       @relation(fields: [userId], references: [id])
+  items CartItem[]
+
+  @@index([userId])
+}
+
+model CartItem {
+  id        String   @id @default(uuid())
+  cartId    String
+  productId String
+  quantity  Int      @default(1)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  cart    Cart    @relation(fields: [cartId], references: [id], onDelete: Cascade)
+  product Product @relation(fields: [productId], references: [id])
+
+  @@unique([cartId, productId]) // Un prodotto può essere nel carrello solo una volta
+  @@index([cartId])
+  @@index([productId])
+}
