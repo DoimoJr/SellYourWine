@@ -1,0 +1,35 @@
+services:
+  - type: web
+    name: sellyourwine-backend
+    runtime: node
+    plan: starter
+    region: frankfurt
+    rootDir: apps/backend
+    buildCommand: npm run build:standalone
+    startCommand: npm run start:prod
+    healthCheckPath: /health
+    envVars:
+      - key: NODE_ENV
+        value: production
+      - key: PORT
+        value: 10000
+      - key: JWT_EXPIRES_IN
+        value: 24h
+      - key: DATABASE_URL
+        sync: false
+      - key: JWT_SECRET
+        generateValue: true
+
+  - type: web
+    name: sellyourwine-frontend
+    runtime: node
+    plan: starter
+    region: frankfurt
+    rootDir: apps/frontend
+    buildCommand: npm run build:standalone
+    startCommand: npm run start
+    envVars:
+      - key: NODE_ENV
+        value: production
+      - key: VITE_API_URL
+        value: https://sellyourwine-backend.onrender.com
