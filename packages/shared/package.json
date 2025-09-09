@@ -1,0 +1,30 @@
+{
+  "name": "@sellyourwine/shared",
+  "version": "1.0.0",
+  "private": true,
+  "description": "Shared types and DTOs for SellYourWine monorepo",
+  "main": "dist/index.js",
+  "types": "dist/index.d.ts",
+  "scripts": {
+    "build": "tsc",
+    "dev": "tsc --watch",
+    "clean": "rm -rf dist",
+    "type-check": "tsc --noEmit",
+    "lint": "eslint src/**/*.ts --fix"
+  },
+  "files": [
+    "dist",
+    "src"
+  ],
+  "dependencies": {
+    "class-validator": "^0.14.2",
+    "class-transformer": "^0.5.1"
+  },
+  "devDependencies": {
+    "@types/node": "^22.10.7",
+    "@typescript-eslint/eslint-plugin": "^8.0.0",
+    "@typescript-eslint/parser": "^8.0.0",
+    "eslint": "^9.0.0",
+    "typescript": "^5.7.3"
+  }
+}

@@ -1,0 +1,15 @@
+services:
+  - type: web
+    name: sellyourwine-frontend
+    runtime: node
+    plan: free
+    region: frankfurt
+    rootDir: apps/frontend
+    buildCommand: npm run build:standalone
+    startCommand: npm run start
+    staticPublishPath: ./dist
+    envVars:
+      - key: NODE_ENV
+        value: production
+      - key: VITE_API_URL
+        value: https://sellyourwine-backend.onrender.com

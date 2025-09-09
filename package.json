@@ -1,0 +1,59 @@
+{
+  "name": "sellyourwine",
+  "version": "1.0.0",
+  "private": true,
+  "packageManager": "pnpm@9.0.0",
+  "description": "SellYourWine - Wine marketplace monorepo",
+  "keywords": ["wine", "marketplace", "nestjs", "react", "monorepo"],
+  "author": "SellYourWine Team",
+  "license": "MIT",
+  "engines": {
+    "node": ">=20.0.0",
+    "pnpm": ">=9.0.0"
+  },
+  "scripts": {
+    "build": "turbo run build",
+    "build:backend": "turbo run build --filter=@sellyourwine/backend",
+    "build:frontend": "turbo run build --filter=@sellyourwine/frontend",
+    "build:shared": "turbo run build --filter=@sellyourwine/shared",
+    "dev": "turbo run dev --parallel",
+    "dev:backend": "turbo run dev --filter=@sellyourwine/backend",
+    "dev:frontend": "turbo run dev --filter=@sellyourwine/frontend",
+    "start": "turbo run start",
+    "start:backend": "turbo run start --filter=@sellyourwine/backend",
+    "start:frontend": "turbo run start --filter=@sellyourwine/frontend",
+    "lint": "turbo run lint",
+    "lint:fix": "turbo run lint:fix",
+    "format": "prettier --write \"**/*.{js,jsx,ts,tsx,json,css,md}\"",
+    "format:check": "prettier --check \"**/*.{js,jsx,ts,tsx,json,css,md}\"",
+    "type-check": "turbo run type-check",
+    "test": "turbo run test",
+    "test:watch": "turbo run test:watch",
+    "clean": "turbo run clean && rm -rf node_modules",
+    "clean:cache": "turbo daemon clean",
+    "db:generate": "turbo run db:generate --filter=backend",
+    "db:push": "turbo run db:push --filter=backend",
+    "db:migrate": "turbo run db:migrate --filter=backend",
+    "db:studio": "turbo run db:studio --filter=backend",
+    "postinstall": "turbo run postinstall"
+  },
+  "devDependencies": {
+    "@turbo/gen": "^2.0.14",
+    "turbo": "^2.0.14",
+    "prettier": "^3.3.3",
+    "husky": "^9.1.5",
+    "lint-staged": "^15.2.9",
+    "@typescript-eslint/eslint-plugin": "^8.3.0",
+    "@typescript-eslint/parser": "^8.3.0",
+    "eslint": "^9.9.1",
+    "typescript": "^5.7.3"
+  },
+  "lint-staged": {
+    "*.{js,jsx,ts,tsx}": ["eslint --fix", "prettier --write"],
+    "*.{json,css,md}": ["prettier --write"]
+  },
+  "workspaces": [
+    "apps/*",
+    "packages/*"
+  ]
+}
