@@ -1,0 +1,299 @@
+'use client'
+
+import Link from 'next/link'
+import { useState, useEffect } from 'react'
+import { useAuth } from '../hooks/useAuth'
+import { HeartIcon, ShoppingCartIcon, UserIcon, ChartBarIcon, ChatBubbleLeftRightIcon } from '@heroicons/react/24/outline'
+
+interface NavbarProps {
+  currentPage?: 'home' | 'browse' | 'sell' | 'login' | 'wishlist' | 'cart' | 'profile'
+}
+
+export default function Navbar({ currentPage = 'home' }: NavbarProps) {
+  const [isMenuOpen, setIsMenuOpen] = useState(false)
+  const { isAuthenticated, user, logout, isLoading } = useAuth()
+  const [unreadCount, setUnreadCount] = useState(0)
+
+  useEffect(() => {
+    if (isAuthenticated) {
+      fetchUnreadCount()
+      // Poll every 30 seconds for new messages
+      const interval = setInterval(fetchUnreadCount, 30000)
+      return () => clearInterval(interval)
+    }
+  }, [isAuthenticated])
+
+  const fetchUnreadCount = async () => {
+    try {
+      const response = await fetch('/api/messages/unread-count')
+      if (response.ok) {
+        const data = await response.json()
+        setUnreadCount(data.count || 0)
+      }
+    } catch (error) {
+      console.error('Error fetching unread count:', error)
+    }
+  }
+
+  return (
+    <nav className="bg-white shadow-sm border-b">
+      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+        <div className="flex justify-between items-center h-16">
+          {/* Logo */}
+          <div className="flex items-center">
+            <Link href="/" className="flex-shrink-0">
+              <h1 className="text-2xl font-bold text-wine-700">SYW</h1>
+            </Link>
+          </div>
+
+          {/* Desktop Navigation */}
+          <div className="hidden md:flex items-center space-x-4">
+            <Link
+              href="/browse"
+              className={`px-3 py-2 rounded-md text-sm font-medium ${
+                currentPage === 'browse'
+                  ? 'text-wine-600 font-semibold'
+                  : 'text-gray-700 hover:text-wine-600'
+              }`}
+            >
+              Cerca
+            </Link>
+            <Link
+              href="/sell"
+              className={`px-3 py-2 rounded-md text-sm font-medium ${
+                currentPage === 'sell'
+                  ? 'text-wine-600 font-semibold'
+                  : 'text-gray-700 hover:text-wine-600'
+              }`}
+            >
+              Vendi
+            </Link>
+            {isAuthenticated && (
+              <Link
+                href="/cart"
+                className={`flex items-center px-3 py-2 rounded-md text-sm font-medium ${
+                  currentPage === 'cart'
+                    ? 'text-wine-600 font-semibold'
+                    : 'text-gray-700 hover:text-wine-600'
+                }`}
+              >
+                <ShoppingCartIcon className="h-5 w-5" />
+              </Link>
+            )}
+            {isAuthenticated && (
+              <Link
+                href="/wishlist"
+                className={`flex items-center px-3 py-2 rounded-md text-sm font-medium ${
+                  currentPage === 'wishlist'
+                    ? 'text-wine-600 font-semibold'
+                    : 'text-gray-700 hover:text-wine-600'
+                }`}
+              >
+                <HeartIcon className="h-5 w-5" />
+              </Link>
+            )}
+            {isAuthenticated && (
+              <Link
+                href="/messages"
+                className={`relative flex items-center px-3 py-2 rounded-md text-sm font-medium ${
+                  currentPage === 'messages'
+                    ? 'text-wine-600 font-semibold'
+                    : 'text-gray-700 hover:text-wine-600'
+                }`}
+              >
+                <ChatBubbleLeftRightIcon className="h-5 w-5" />
+                {unreadCount > 0 && (
+                  <span className="absolute top-1 right-1 inline-flex items-center justify-center px-1.5 py-0.5 text-xs font-bold leading-none text-white bg-red-600 rounded-full">
+                    {unreadCount}
+                  </span>
+                )}
+              </Link>
+            )}
+            {isAuthenticated && (
+              <Link
+                href="/profile"
+                className={`flex items-center space-x-1 px-3 py-2 rounded-md text-sm font-medium ${
+                  currentPage === 'profile'
+                    ? 'text-wine-600 font-semibold'
+                    : 'text-gray-700 hover:text-wine-600'
+                }`}
+              >
+                <UserIcon className="h-4 w-4" />
+                <span>
+                  {user?.firstName && user?.lastName
+                    ? `${user.firstName} ${user.lastName}`
+                    : user?.firstName || user?.username || 'Profilo'}
+                </span>
+              </Link>
+            )}
+            {isLoading ? (
+              <div className="px-4 py-2">
+                <div className="animate-pulse bg-gray-300 h-4 w-16 rounded"></div>
+              </div>
+            ) : isAuthenticated ? (
+              <button
+                onClick={logout}
+                className="text-white bg-wine-600 hover:bg-wine-700 px-4 py-2 rounded-md text-sm font-medium transition-colors"
+              >
+                Esci
+              </button>
+            ) : (
+              <Link 
+                href="/login" 
+                className="text-white bg-wine-600 hover:bg-wine-700 px-4 py-2 rounded-md text-sm font-medium transition-colors"
+              >
+                Sign In
+              </Link>
+            )}
+          </div>
+
+          {/* Mobile menu button */}
+          <div className="md:hidden">
+            <button
+              onClick={() => setIsMenuOpen(!isMenuOpen)}
+              className="text-gray-700 hover:text-wine-600 focus:outline-none focus:ring-2 focus:ring-wine-500 p-2"
+            >
+              <svg
+                className="h-6 w-6"
+                fill="none"
+                viewBox="0 0 24 24"
+                stroke="currentColor"
+              >
+                {isMenuOpen ? (
+                  <path
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                    strokeWidth={2}
+                    d="M6 18L18 6M6 6l12 12"
+                  />
+                ) : (
+                  <path
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                    strokeWidth={2}
+                    d="M4 6h16M4 12h16M4 18h16"
+                  />
+                )}
+              </svg>
+            </button>
+          </div>
+        </div>
+
+        {/* Mobile Navigation */}
+        {isMenuOpen && (
+          <div className="md:hidden border-t border-gray-200 py-2">
+            <div className="flex flex-col space-y-2">
+              <Link 
+                href="/browse" 
+                className={`px-3 py-2 rounded-md text-sm font-medium ${
+                  currentPage === 'browse' 
+                    ? 'text-wine-600 bg-wine-50 font-semibold' 
+                    : 'text-gray-700 hover:text-wine-600 hover:bg-gray-50'
+                }`}
+                onClick={() => setIsMenuOpen(false)}
+              >
+                Browse Wines
+              </Link>
+              <Link
+                href="/sell"
+                className={`px-3 py-2 rounded-md text-sm font-medium ${
+                  currentPage === 'sell'
+                    ? 'text-wine-600 bg-wine-50 font-semibold'
+                    : 'text-gray-700 hover:text-wine-600 hover:bg-gray-50'
+                }`}
+                onClick={() => setIsMenuOpen(false)}
+              >
+                Sell Wine
+              </Link>
+              {isAuthenticated && (
+                <Link 
+                  href="/cart" 
+                  className={`flex items-center space-x-2 px-3 py-2 rounded-md text-sm font-medium ${
+                    currentPage === 'cart' 
+                      ? 'text-wine-600 bg-wine-50 font-semibold' 
+                      : 'text-gray-700 hover:text-wine-600 hover:bg-gray-50'
+                  }`}
+                  onClick={() => setIsMenuOpen(false)}
+                >
+                  <ShoppingCartIcon className="h-4 w-4" />
+                  <span>Carrello</span>
+                </Link>
+              )}
+              {isAuthenticated && (
+                <Link
+                  href="/wishlist"
+                  className={`flex items-center space-x-2 px-3 py-2 rounded-md text-sm font-medium ${
+                    currentPage === 'wishlist'
+                      ? 'text-wine-600 bg-wine-50 font-semibold'
+                      : 'text-gray-700 hover:text-wine-600 hover:bg-gray-50'
+                  }`}
+                  onClick={() => setIsMenuOpen(false)}
+                >
+                  <HeartIcon className="h-4 w-4" />
+                  <span>Wishlist</span>
+                </Link>
+              )}
+              {isAuthenticated && (
+                <Link
+                  href="/messages"
+                  className={`relative flex items-center space-x-2 px-3 py-2 rounded-md text-sm font-medium ${
+                    currentPage === 'messages'
+                      ? 'text-wine-600 bg-wine-50 font-semibold'
+                      : 'text-gray-700 hover:text-wine-600 hover:bg-gray-50'
+                  }`}
+                  onClick={() => setIsMenuOpen(false)}
+                >
+                  <ChatBubbleLeftRightIcon className="h-4 w-4" />
+                  <span>Messaggi</span>
+                  {unreadCount > 0 && (
+                    <span className="inline-flex items-center justify-center px-1.5 py-0.5 text-xs font-bold leading-none text-white bg-red-600 rounded-full">
+                      {unreadCount}
+                    </span>
+                  )}
+                </Link>
+              )}
+              {isAuthenticated && (
+                <Link
+                  href="/profile"
+                  className={`flex items-center space-x-2 px-3 py-2 rounded-md text-sm font-medium ${
+                    currentPage === 'profile'
+                      ? 'text-wine-600 bg-wine-50 font-semibold'
+                      : 'text-gray-700 hover:text-wine-600 hover:bg-gray-50'
+                  }`}
+                  onClick={() => setIsMenuOpen(false)}
+                >
+                  <UserIcon className="h-4 w-4" />
+                  <span>Profilo</span>
+                </Link>
+              )}
+              {isAuthenticated ? (
+                <div className="flex flex-col space-y-2 mx-3">
+                  <span className="text-sm text-gray-700 py-2">
+                    Welcome, {user?.name || user?.username}
+                  </span>
+                  <button
+                    onClick={() => {
+                      logout()
+                      setIsMenuOpen(false)
+                    }}
+                    className="text-white bg-wine-600 hover:bg-wine-700 px-3 py-2 rounded-md text-sm font-medium transition-colors"
+                  >
+                    Sign Out
+                  </button>
+                </div>
+              ) : (
+                <Link 
+                  href="/login" 
+                  className="text-white bg-wine-600 hover:bg-wine-700 px-3 py-2 rounded-md text-sm font-medium transition-colors mx-3"
+                  onClick={() => setIsMenuOpen(false)}
+                >
+                  Sign In
+                </Link>
+              )}
+            </div>
+          </div>
+        )}
+      </div>
+    </nav>
+  )
+}
