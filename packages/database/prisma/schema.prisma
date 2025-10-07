@@ -24,6 +24,12 @@ model User {
   bio             String?
   location        String?
   profileComplete Boolean  @default(false)
+
+  // Seller rating cache
+  sellerRating        Float? @default(0.0)
+  sellerReviewCount   Int    @default(0)
+  sellerResponseRate  Float? @default(0.0)
+
   createdAt       DateTime @default(now())
   updatedAt       DateTime @updatedAt
 
@@ -108,6 +114,7 @@ model Order {
   orderItems      OrderItem[]
   messages        Message[]
   refundRequests  RefundRequest[]
+  reviews         Review[]
 
   @@map("orders")
 }
@@ -128,18 +135,25 @@ model OrderItem {
 
 model Review {
   id         String     @id @default(cuid())
-  rating     Int
+  rating     Int        // Overall rating 1-5 stars
   comment    String?
   reviewerId String
   targetId   String
+  orderId    String?    // Link to order being reviewed (optional for now due to DB migration issue)
   wineId     String?
-  type       ReviewType @default(USER_REVIEW)
+  type       ReviewType @default(ORDER_REVIEW)
+
+  // Seller response
+  sellerResponse      String?
+  sellerRespondedAt   DateTime?
+
   createdAt  DateTime   @default(now())
   updatedAt  DateTime   @updatedAt
 
   // Relations
   reviewer User  @relation("ReviewerReviews", fields: [reviewerId], references: [id])
   target   User  @relation("TargetReviews", fields: [targetId], references: [id])
+  order    Order? @relation(fields: [orderId], references: [id])
   wine     Wine? @relation(fields: [wineId], references: [id])
 
   @@map("reviews")

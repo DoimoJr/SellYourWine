@@ -1,5 +1,6 @@
 import Link from 'next/link'
 import Image from 'next/image'
+import SellerRatingBadge from './SellerRatingBadge'
 
 interface WineCardProps {
   wine: {
@@ -20,6 +21,14 @@ interface WineCardProps {
     totalReviews?: number
     _count?: {
       reviews: number
+    }
+    seller?: {
+      id: string
+      username: string
+      firstName?: string
+      lastName?: string
+      sellerRating?: number
+      sellerReviewCount?: number
     }
   }
 }
@@ -113,6 +122,18 @@ export default function WineCard({ wine }: WineCardProps) {
           {wine.region && wine.country && <span>, </span>}
           {wine.country && <span>{wine.country}</span>}
         </div>
+
+        {/* Seller rating badge */}
+        {wine.seller && wine.seller.sellerRating != null && wine.seller.sellerReviewCount != null && (
+          <div className="mb-2">
+            <SellerRatingBadge
+              rating={wine.seller.sellerRating}
+              reviewCount={wine.seller.sellerReviewCount}
+              size="sm"
+              showCount={true}
+            />
+          </div>
+        )}
 
         {/* Rating display */}
         {wine.averageRating != null && wine.totalReviews != null && wine.totalReviews > 0 && (

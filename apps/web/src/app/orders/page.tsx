@@ -15,10 +15,12 @@ import {
   EyeIcon,
   ClockIcon,
   XCircleIcon,
-  CheckIcon
+  CheckIcon,
+  StarIcon
 } from '@heroicons/react/24/outline'
 import { CheckCircleIcon as CheckCircleSolidIcon } from '@heroicons/react/24/solid'
 import Navbar from '../../components/Navbar'
+import ReviewModal from '../../components/ReviewModal'
 import { OrderStatus } from '@wine-marketplace/shared'
 
 interface OrderItem {
@@ -31,6 +33,16 @@ interface OrderItem {
     imageUrl?: string
     annata: number
   }
+}
+
+interface Review {
+  id: string
+  rating: number
+  comment?: string
+  createdAt: string
+  updatedAt: string
+  sellerResponse?: string
+  sellerRespondedAt?: string
 }
 
 interface Order {
@@ -49,6 +61,8 @@ interface Order {
     lastName?: string
   }
   items: OrderItem[]
+  hasReview?: boolean
+  reviews?: Review[]
 }
 
 const getStatusColor = (status: OrderStatus) => {
@@ -121,13 +135,21 @@ const OrderCard = ({
   order,
   isVendor,
   confirmingDelivery,
-  onConfirmDelivery
+  onConfirmDelivery,
+  onOpenReviewModal
 }: {
   order: Order
   isVendor: boolean
   confirmingDelivery: string | null
   onConfirmDelivery: (orderId: string) => void
+  onOpenReviewModal: (order: Order) => void
 }) => {
+  const [showReview, setShowReview] = useState(false)
+  const [isEditing, setIsEditing] = useState(false)
+  const [editRating, setEditRating] = useState(0)
+  const [editComment, setEditComment] = useState('')
+  const [saving, setSaving] = useState(false)
+
   const formatDate = (dateString: string) => {
     return new Date(dateString).toLocaleDateString('it-IT', {
       day: '2-digit',
@@ -145,8 +167,55 @@ const OrderCard = ({
     }).format(price)
   }
 
+  const handleEditClick = () => {
+    if (order.reviews && order.reviews[0]) {
+      setEditRating(order.reviews[0].rating)
+      setEditComment(order.reviews[0].comment || '')
+      setIsEditing(true)
+    }
+  }
+
+  const handleCancelEdit = () => {
+    setIsEditing(false)
+    setEditRating(0)
+    setEditComment('')
+  }
+
+  const handleSaveEdit = async () => {
+    if (!order.reviews || !order.reviews[0]) return
+
+    setSaving(true)
+    try {
+      const response = await fetch(`/api/reviews/${order.reviews[0].id}`, {
+        method: 'PATCH',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          rating: editRating,
+          comment: editComment,
+        }),
+      })
+
+      if (!response.ok) {
+        const errorData = await response.json().catch(() => ({ error: 'Unknown error' }))
+        console.error('Error response:', errorData)
+        throw new Error(errorData.message || errorData.error || 'Failed to update review')
+      }
+
+      // Refresh the page to show updated review
+      window.location.reload()
+    } catch (error) {
+      console.error('Error updating review:', error)
+      alert(`Errore durante l'aggiornamento della recensione: ${error instanceof Error ? error.message : 'Errore sconosciuto'}`)
+    } finally {
+      setSaving(false)
+    }
+  }
+
   const mainWine = order.orderItems?.[0]?.wine
   const totalItems = order.orderItems?.reduce((sum, item) => sum + item.quantity, 0) || 0
+  const isReviewEdited = order.reviews?.[0] && new Date(order.reviews[0].updatedAt).getTime() > new Date(order.reviews[0].createdAt).getTime() + 1000
 
   return (
     <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-6 hover:shadow-md transition-shadow">
@@ -273,9 +342,153 @@ const OrderCard = ({
                 Traccia
               </a>
             )}
+
+            {!isVendor && order.status === 'DELIVERED' && (!order.reviews || order.reviews.length === 0) && (
+              <button
+                onClick={() => onOpenReviewModal(order)}
+                className="inline-flex items-center justify-center px-4 py-2 border border-transparent text-sm font-medium rounded-md text-white bg-yellow-500 hover:bg-yellow-600 transition-colors"
+              >
+                <StarIcon className="h-4 w-4 mr-2" />
+                Lascia Recensione
+              </button>
+            )}
+
+            {!isVendor && order.reviews && order.reviews.length > 0 && (
+              <button
+                onClick={() => setShowReview(!showReview)}
+                className="inline-flex items-center justify-center px-4 py-2 border border-transparent text-sm font-medium rounded-md text-white bg-green-600 hover:bg-green-700 transition-colors"
+              >
+                <StarIcon className="h-4 w-4 mr-2" />
+                {showReview ? 'Nascondi Recensione' : 'Vedi la Mia Recensione'}
+              </button>
+            )}
           </div>
         </div>
       </div>
+
+      {/* Review Display */}
+      {!isVendor && showReview && order.reviews && order.reviews.length > 0 && (
+        <div className="mt-4 p-4 bg-gray-50 rounded-lg border border-gray-200">
+          {!isEditing ? (
+            <>
+              <div className="flex items-center justify-between mb-3">
+                <div className="flex items-center gap-2">
+                  <h4 className="font-semibold text-gray-900">La Tua Recensione</h4>
+                  {isReviewEdited && (
+                    <span className="text-xs text-gray-500 italic">(modificata)</span>
+                  )}
+                </div>
+                <div className="flex items-center gap-3">
+                  <div className="flex items-center">
+                    {Array.from({ length: 5 }).map((_, i) => (
+                      <StarIcon
+                        key={i}
+                        className={`h-5 w-5 ${
+                          i < order.reviews![0].rating
+                            ? 'text-yellow-400 fill-yellow-400'
+                            : 'text-gray-300'
+                        }`}
+                      />
+                    ))}
+                  </div>
+                  <button
+                    onClick={handleEditClick}
+                    className="text-sm text-wine-600 hover:text-wine-700 font-medium"
+                  >
+                    Modifica
+                  </button>
+                </div>
+              </div>
+
+              {order.reviews[0].comment && (
+                <p className="text-gray-700 mb-2">{order.reviews[0].comment}</p>
+              )}
+
+              <p className="text-xs text-gray-500">
+                Recensito il {formatDate(order.reviews[0].createdAt)}
+                {isReviewEdited && ` • Modificata il ${formatDate(order.reviews[0].updatedAt)}`}
+              </p>
+
+              {order.reviews[0].sellerResponse && (
+                <div className="mt-4 pt-4 border-t border-gray-200">
+                  <h5 className="font-medium text-gray-900 mb-2">Risposta del Venditore</h5>
+                  <p className="text-gray-700 text-sm mb-1">{order.reviews[0].sellerResponse}</p>
+                  <p className="text-xs text-gray-500">
+                    Risposto il {formatDate(order.reviews[0].sellerRespondedAt!)}
+                  </p>
+                </div>
+              )}
+            </>
+          ) : (
+            <>
+              <div className="flex items-center justify-between mb-4">
+                <h4 className="font-semibold text-gray-900">Modifica Recensione</h4>
+              </div>
+
+              {/* Rating Selector */}
+              <div className="mb-4">
+                <label className="block text-sm font-medium text-gray-700 mb-2">
+                  Valutazione
+                </label>
+                <div className="flex items-center gap-1">
+                  {Array.from({ length: 5 }).map((_, i) => (
+                    <button
+                      key={i}
+                      type="button"
+                      onClick={() => setEditRating(i + 1)}
+                      className="focus:outline-none"
+                    >
+                      <StarIcon
+                        className={`h-8 w-8 ${
+                          i < editRating
+                            ? 'text-yellow-400 fill-yellow-400'
+                            : 'text-gray-300'
+                        } hover:text-yellow-400 cursor-pointer transition-colors`}
+                      />
+                    </button>
+                  ))}
+                </div>
+              </div>
+
+              {/* Comment Field */}
+              <div className="mb-4">
+                <label className="block text-sm font-medium text-gray-700 mb-2">
+                  Commento (opzionale)
+                </label>
+                <textarea
+                  value={editComment}
+                  onChange={(e) => setEditComment(e.target.value)}
+                  rows={4}
+                  maxLength={500}
+                  className="w-full border border-gray-300 rounded-md px-3 py-2 focus:ring-wine-500 focus:border-wine-500"
+                  placeholder="Condividi la tua esperienza..."
+                />
+                <p className="text-xs text-gray-500 mt-1">
+                  {editComment.length}/500 caratteri
+                </p>
+              </div>
+
+              {/* Action Buttons */}
+              <div className="flex justify-end gap-2">
+                <button
+                  onClick={handleCancelEdit}
+                  disabled={saving}
+                  className="px-4 py-2 border border-gray-300 text-gray-700 rounded-md hover:bg-gray-50 transition-colors disabled:opacity-50"
+                >
+                  Annulla
+                </button>
+                <button
+                  onClick={handleSaveEdit}
+                  disabled={saving || editRating === 0}
+                  className="px-4 py-2 bg-wine-600 text-white rounded-md hover:bg-wine-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                >
+                  {saving ? 'Salvando...' : 'Salva Modifiche'}
+                </button>
+              </div>
+            </>
+          )}
+        </div>
+      )}
     </div>
   )
 }
@@ -294,6 +507,8 @@ export default function OrdersPage() {
   const [activeTab, setActiveTab] = useState<OrderType>('purchases')
   const [error, setError] = useState<string | null>(null)
   const [confirmingDelivery, setConfirmingDelivery] = useState<string | null>(null)
+  const [reviewModalOpen, setReviewModalOpen] = useState(false)
+  const [selectedOrder, setSelectedOrder] = useState<Order | null>(null)
 
   const isSuccess = searchParams.get('success') === 'true'
 
@@ -397,6 +612,18 @@ export default function OrdersPage() {
     } finally {
       setConfirmingDelivery(null)
     }
+  }
+
+  const handleOpenReviewModal = (order: Order) => {
+    setSelectedOrder(order)
+    setReviewModalOpen(true)
+  }
+
+  const handleReviewSuccess = () => {
+    setReviewModalOpen(false)
+    setSelectedOrder(null)
+    // Refresh orders to update hasReview flag
+    fetchOrders()
   }
 
   if (loading) {
@@ -616,11 +843,28 @@ export default function OrdersPage() {
                     isVendor={activeTab === 'sales'}
                     confirmingDelivery={confirmingDelivery}
                     onConfirmDelivery={handleConfirmDelivery}
+                    onOpenReviewModal={handleOpenReviewModal}
                   />
                 ))}
               </div>
             )}
           </div>
+        )}
+
+        {/* Review Modal */}
+        {selectedOrder && (
+          <ReviewModal
+            isOpen={reviewModalOpen}
+            onClose={() => setReviewModalOpen(false)}
+            orderId={selectedOrder.id}
+            orderNumber={selectedOrder.orderNumber}
+            sellerName={
+              selectedOrder.seller.firstName && selectedOrder.seller.lastName
+                ? `${selectedOrder.seller.firstName} ${selectedOrder.seller.lastName}`
+                : selectedOrder.seller.username
+            }
+            onSuccess={handleReviewSuccess}
+          />
         )}
       </div>
     </div>

@@ -14,6 +14,12 @@ export interface User {
   bio?: string;
   location?: string;
   profileComplete: boolean;
+
+  // Seller rating fields
+  sellerRating?: number;
+  sellerReviewCount?: number;
+  sellerResponseRate?: number;
+
   createdAt: Date;
   updatedAt: Date;
 }

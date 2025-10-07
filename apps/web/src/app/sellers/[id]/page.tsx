@@ -17,6 +17,8 @@ import {
 } from '@heroicons/react/24/outline'
 import { HeartIcon as HeartSolidIcon, UserIcon as UserSolidIcon } from '@heroicons/react/24/solid'
 import Navbar from '../../../components/Navbar'
+import ReviewStats from '../../../components/ReviewStats'
+import ReviewCard from '../../../components/ReviewCard'
 
 interface Seller {
   id: string
@@ -64,21 +66,65 @@ interface WinesResponse {
   totalPages: number
 }
 
+interface Review {
+  id: string
+  rating: number
+  comment?: string
+  communicationRating?: number
+  shippingRating?: number
+  packagingRating?: number
+  sellerResponse?: string
+  sellerRespondedAt?: Date | string
+  createdAt: Date | string
+  reviewer: {
+    id: string
+    username: string
+    firstName?: string
+    lastName?: string
+    avatar?: string
+  }
+}
+
+interface ReviewsResponse {
+  reviews: Review[]
+  stats: {
+    averageRating: number
+    totalReviews: number
+    responseRate: number
+    ratingDistribution: {
+      1: number
+      2: number
+      3: number
+      4: number
+      5: number
+    }
+  }
+  pagination: {
+    page: number
+    limit: number
+    total: number
+    totalPages: number
+  }
+}
+
 export default function SellerProfilePage() {
   const params = useParams()
   const { data: session } = useSession()
   const [seller, setSeller] = useState<Seller | null>(null)
   const [wines, setWines] = useState<WinesResponse | null>(null)
+  const [reviews, setReviews] = useState<ReviewsResponse | null>(null)
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
   const [isFollowing, setIsFollowing] = useState(false)
   const [followLoading, setFollowLoading] = useState(false)
   const [winesLoading, setWinesLoading] = useState(false)
+  const [reviewsLoading, setReviewsLoading] = useState(false)
 
   useEffect(() => {
     if (params.id) {
       fetchSellerProfile(params.id as string)
       fetchSellerWines(params.id as string)
+      fetchSellerReviews(params.id as string)
     }
   }, [params.id])
 
@@ -127,6 +173,22 @@ export default function SellerProfilePage() {
       console.error('Error fetching seller wines:', error)
     } finally {
       setWinesLoading(false)
+    }
+  }
+
+  const fetchSellerReviews = async (id: string) => {
+    try {
+      setReviewsLoading(true)
+      const response = await fetch(`/api/reviews/seller/${id}?page=1&limit=10`)
+
+      if (response.ok) {
+        const data = await response.json()
+        setReviews(data)
+      }
+    } catch (error) {
+      console.error('Error fetching seller reviews:', error)
+    } finally {
+      setReviewsLoading(false)
     }
   }
 
@@ -447,6 +509,62 @@ export default function SellerProfilePage() {
                 </Link>
               </div>
             )}
+          </div>
+        </div>
+
+        {/* Reviews Section */}
+        <div className="mt-8 grid grid-cols-1 lg:grid-cols-3 gap-8">
+          {/* Review Stats */}
+          <div className="lg:col-span-1">
+            {reviewsLoading ? (
+              <div className="bg-white rounded-lg shadow-sm p-6">
+                <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-wine-600 mx-auto"></div>
+              </div>
+            ) : reviews?.stats ? (
+              <ReviewStats
+                averageRating={reviews.stats.averageRating}
+                totalReviews={reviews.stats.totalReviews}
+                ratingDistribution={reviews.stats.ratingDistribution}
+                responseRate={reviews.stats.responseRate}
+              />
+            ) : null}
+          </div>
+
+          {/* Reviews List */}
+          <div className="lg:col-span-2">
+            <div className="bg-white rounded-lg shadow-sm overflow-hidden">
+              <div className="px-6 py-4 border-b border-gray-200">
+                <h2 className="text-xl font-bold text-gray-900">
+                  Recensioni ({reviews?.stats.totalReviews || 0})
+                </h2>
+              </div>
+
+              <div className="p-6">
+                {reviewsLoading ? (
+                  <div className="text-center py-8">
+                    <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-wine-600 mx-auto"></div>
+                  </div>
+                ) : !reviews || reviews.reviews.length === 0 ? (
+                  <div className="text-center py-8">
+                    <div className="text-gray-500">Nessuna recensione ancora</div>
+                  </div>
+                ) : (
+                  <div className="space-y-4">
+                    {reviews.reviews.map((review) => (
+                      <ReviewCard key={review.id} review={review} showDetailedRatings={true} />
+                    ))}
+
+                    {reviews.pagination.totalPages > 1 && (
+                      <div className="mt-6 text-center">
+                        <button className="inline-flex items-center px-6 py-3 border border-transparent text-base font-medium rounded-md text-wine-600 bg-wine-50 hover:bg-wine-100">
+                          Carica altre recensioni
+                        </button>
+                      </div>
+                    )}
+                  </div>
+                )}
+              </div>
+            </div>
           </div>
         </div>
       </div>

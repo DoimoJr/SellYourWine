@@ -169,6 +169,18 @@ export class OrdersService {
               verified: true,
             },
           },
+          reviews: {
+            select: {
+              id: true,
+              rating: true,
+              comment: true,
+              createdAt: true,
+              updatedAt: true,
+              sellerResponse: true,
+              sellerRespondedAt: true,
+              reviewerId: true,
+            },
+          },
         },
       }),
       this.prisma.order.count({ where }),
